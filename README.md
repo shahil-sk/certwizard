@@ -151,5 +151,5 @@ See [CHANGES.md](CHANGES.md) for the full version history.
 
 ## Credits
 
-Developed by [Shahil SK](https://github.com/shahil-sk).
+Developed by [shahil-sk](https://github.com/shahil-sk).
 Uses Pillow, openpyxl, fpdf2, and Tkinter.
