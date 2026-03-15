@@ -34,3 +34,4 @@ venv/
 *.zip
 .~lock.dummy_data2.xlsx#
 hook-PIL.ImageTk.py
+CHANGES.md
