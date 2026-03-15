@@ -90,8 +90,7 @@ datas = [
     ("fonts",     "fonts"),
     ("testfiles", "testfiles"),
     # app icons
-    ("certgen.ico", "."),
-    ("certgen.png", "."),
+    ("icon.ico", ".")
 ]
 
 # fpdf2 ships its core font files as package data; collect them so the
@@ -158,6 +157,6 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     # Windows only; ignored on other platforms
-    icon="certgen.ico",
+    icon="icon.ico",
     version=None,
 )
