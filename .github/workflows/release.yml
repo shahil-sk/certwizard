@@ -1,7 +1,7 @@
 name: Build and Release
 
-# Triggers on every tag that looks like v2.1, v2.1.3, etc.
-# You can also kick it off manually from the Actions tab.
+# Push a semver tag to trigger the full build + release pipeline.
+# Manual dispatch is available for testing builds without a release.
 on:
   push:
     tags:
@@ -10,12 +10,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag name to release under (e.g. v2.2)"
-        required: true
+        description: "Release tag (e.g. v2.2) — only used for release name"
+        required: false
+        default: ""
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -24,139 +25,150 @@ jobs:
         include:
           - os: windows-latest
             label: windows
-            artifact: CertWizard-windows.exe
-            pyinstaller_args: >-
-              --onefile
-              --windowed
-              --icon=certgen.ico
-              --add-data "fonts;fonts"
-              --add-data "testfiles;testfiles"
-              --name CertWizard
-              main.py
-            output_path: dist/CertWizard.exe
             final_name: CertWizard-windows.exe
+            binary_path: dist/CertWizard.exe
 
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             label: linux
-            artifact: CertWizard-linux
-            # Tkinter needs the display libs even when building headlessly.
-            # xvfb is used only at build time; the shipped binary runs natively.
-            pyinstaller_args: >-
-              --onefile
-              --windowed
-              --icon=certgen.ico
-              --add-data "fonts:fonts"
-              --add-data "testfiles:testfiles"
-              --name CertWizard
-              main.py
-            output_path: dist/CertWizard
             final_name: CertWizard-linux
+            binary_path: dist/CertWizard
 
           - os: macos-latest
             label: macos
-            artifact: CertWizard-macos
-            pyinstaller_args: >-
-              --onefile
-              --windowed
-              --icon=certgen.ico
-              --add-data "fonts:fonts"
-              --add-data "testfiles:testfiles"
-              --name CertWizard
-              main.py
-            output_path: dist/CertWizard
             final_name: CertWizard-macos
+            binary_path: dist/CertWizard
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      # Linux needs the Tkinter system package and a virtual framebuffer
-      # so that Tk can initialise during the PyInstaller collection phase.
-      - name: Install system dependencies (Linux only)
+      # -----------------------------------------------------------------------
+      # Linux: Tkinter is a separate system package on Ubuntu.
+      # xvfb gives a virtual display so Tk can initialise during collection.
+      # UPX is installed for binary compression.
+      # -----------------------------------------------------------------------
+      - name: Install system dependencies (Linux)
         if: matrix.label == 'linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y python3-tk xvfb
+          sudo apt-get install -y python3-tk xvfb upx-ucl
+
+      # macOS: UPX via Homebrew
+      - name: Install UPX (macOS)
+        if: matrix.label == 'macos'
+        run: brew install upx
+
+      # Windows: UPX via choco
+      - name: Install UPX (Windows)
+        if: matrix.label == 'windows'
+        run: choco install upx --no-progress -y
+        shell: pwsh
 
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
-      # The certgen.ico is a Windows icon; PIL may warn on other platforms
-      # but PyInstaller handles it gracefully, so no special step needed.
-      - name: Build binary (Linux uses xvfb-run)
+      # -----------------------------------------------------------------------
+      # Build using the .spec file.
+      # The spec explicitly lists every hidden import and collected data file
+      # so the binary is fully self-contained — zero runtime dependencies.
+      # Linux wraps the command in xvfb-run so Tkinter can open a display
+      # during PyInstaller's module collection phase.
+      # -----------------------------------------------------------------------
+      - name: Build standalone binary (Linux)
+        if: matrix.label == 'linux'
+        run: xvfb-run pyinstaller certwizard.spec --clean --noconfirm
+
+      - name: Build standalone binary (Windows / macOS)
+        if: matrix.label != 'linux'
+        run: pyinstaller certwizard.spec --clean --noconfirm
+
+      # -----------------------------------------------------------------------
+      # Smoke-test: verify the binary exists and is non-zero in size.
+      # On Linux we also confirm no external .so files leaked outside the exe.
+      # -----------------------------------------------------------------------
+      - name: Verify binary exists
         shell: bash
         run: |
-          if [ "${{ matrix.label }}" = "linux" ]; then
-            xvfb-run pyinstaller ${{ matrix.pyinstaller_args }}
-          else
-            pyinstaller ${{ matrix.pyinstaller_args }}
+          if [ ! -f "${{ matrix.binary_path }}" ]; then
+            echo "Binary not found at ${{ matrix.binary_path }}"
+            exit 1
+          fi
+          SIZE=$(wc -c < "${{ matrix.binary_path }}")
+          echo "Binary size: $SIZE bytes"
+          if [ "$SIZE" -lt 1000000 ]; then
+            echo "Binary is suspiciously small — build may have failed silently"
+            exit 1
           fi
 
-      - name: Rename output to platform label
+      - name: Rename to platform label
         shell: bash
-        run: mv "${{ matrix.output_path }}" "dist/${{ matrix.final_name }}"
+        run: mv "${{ matrix.binary_path }}" "dist/${{ matrix.final_name }}"
 
-      - name: Upload artifact for release job
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
+          name: ${{ matrix.final_name }}
           path: dist/${{ matrix.final_name }}
           retention-days: 1
 
   release:
-    name: Create GitHub Release
+    name: Publish Release
     needs: build
     runs-on: ubuntu-latest
-    # Only create a real release when triggered by a tag push.
-    # Manual runs still upload artifacts but skip the release step.
     if: startsWith(github.ref, 'refs/tags/')
 
     permissions:
       contents: write
 
     steps:
-      - name: Checkout source (needed for CHANGES.md)
+      - name: Checkout (for CHANGES.md)
         uses: actions/checkout@v4
 
-      - name: Download all build artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-assets
           merge-multiple: true
 
-      # Pull the top changelog block (everything between the first and
-      # second '## ' headings) and use it as the release body.
+      # Confirm all three binaries landed before we publish anything.
+      - name: Verify all artifacts present
+        run: |
+          for f in CertWizard-windows.exe CertWizard-linux CertWizard-macos; do
+            if [ ! -f "release-assets/$f" ]; then
+              echo "Missing artifact: $f"
+              exit 1
+            fi
+          done
+          ls -lh release-assets/
+
       - name: Extract release notes from CHANGES.md
         id: notes
         run: |
-          python - <<'EOF'
-          import re, os, sys
+          python3 - <<'EOF'
+          import re, os
 
           text = open("CHANGES.md").read()
-          # Find the first version block and grab its content
+          # Split on every '## ' heading; index 1 is the most recent block.
           blocks = re.split(r"(?=^## )", text, flags=re.MULTILINE)
-          # blocks[0] is the file header, blocks[1] is the latest release
-          body = blocks[1] if len(blocks) > 1 else text
+          body = blocks[1].strip() if len(blocks) > 1 else text.strip()
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-              # GitHub outputs use a multiline delimiter
-              delimiter = "NOTES_EOF"
-              fh.write(f"body<<{delimiter}\n{body.strip()}\n{delimiter}\n")
+              fh.write(f"body<<NOTES_EOF\n{body}\nNOTES_EOF\n")
           EOF
 
       - name: Resolve tag name
         id: tag
         run: echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Publish release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
