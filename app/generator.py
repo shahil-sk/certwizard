@@ -13,6 +13,26 @@ from PIL import Image
 from app.helpers import px_to_mm, safe_filename
 from app.image_renderer import draw_text_on_image
 
+_TOKEN_RE = re.compile(r"\{(\w+)\}")
+
+
+def _build_filename(pattern: str, student: dict, idx: int, fields: list) -> str:
+    """
+    Replace {field_name} tokens with student values.
+    Falls back to first two fields if pattern is empty.
+    """
+    if pattern and pattern.strip():
+        def _repl(m):
+            key = m.group(1).lower()
+            val = student.get(key, "")
+            return safe_filename(val) if val else m.group(0)
+        name = _TOKEN_RE.sub(_repl, pattern.strip())
+        name = name or f"cert_{idx + 1}"
+    else:
+        parts = [student.get(fields[i], "") for i in range(min(2, len(fields)))]
+        name  = safe_filename(*parts) or f"cert_{idx + 1}"
+    return name
+
 
 def run(
     excel_data: list,
@@ -28,6 +48,7 @@ def run(
     on_log,                   # callable(msg: str, clear: bool)
     on_done,                  # callable(count: int, total: int)
     lock: threading.Lock,
+    filename_pattern: str = "",   # e.g. "{name}_{date}"
 ) -> None:
     """Start generation on a daemon thread and return immediately."""
 
@@ -43,6 +64,7 @@ def run(
         count = 0
         on_log("Starting generation...", True)
         on_log(f"Records: {total}   Mode: {sub}   Output: {out_dir}", False)
+        on_log(f"Filename pattern: {filename_pattern or '(default)'}", False)
         on_log("-" * 44, False)
 
         for idx, student in enumerate(excel_data):
@@ -61,11 +83,7 @@ def run(
                 pdf.add_page()
                 pdf.image(buf, x=0, y=0, w=pdf_w, h=pdf_h)
 
-                parts = [
-                    student.get(fields[i], "")
-                    for i in range(min(2, len(fields)))
-                ]
-                name = safe_filename(*parts) or f"cert_{idx + 1}"
+                name = _build_filename(filename_pattern, student, idx, fields)
                 dest = os.path.join(out_sub, f"{name}_certificate.pdf")
                 pdf.output(dest)
                 count += 1
