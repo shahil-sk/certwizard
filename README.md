@@ -1,13 +1,13 @@
-# CertWizard
+# CertFlow
 
 **Bulk certificate generation, done right.**
 
 [![Python](https://img.shields.io/badge/Python-3.7%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/shahil-sk/certwizard?style=flat-square&color=yellow)](https://github.com/shahil-sk/certwizard/stargazers)
-[![Forks](https://img.shields.io/github/forks/shahil-sk/certwizard?style=flat-square&color=blue)](https://github.com/shahil-sk/certwizard/network/members)
-[![Issues](https://img.shields.io/github/issues/shahil-sk/certwizard?style=flat-square)](https://github.com/shahil-sk/certwizard/issues)
-[![Last Commit](https://img.shields.io/github/last-commit/shahil-sk/certwizard?style=flat-square)](https://github.com/shahil-sk/certwizard/commits/master)
+[![Stars](https://img.shields.io/github/stars/shahil-sk/certflow?style=flat-square&color=yellow)](https://github.com/shahil-sk/certflow/stargazers)
+[![Forks](https://img.shields.io/github/forks/shahil-sk/certflow?style=flat-square&color=blue)](https://github.com/shahil-sk/certflow/network/members)
+[![Issues](https://img.shields.io/github/issues/shahil-sk/certflow?style=flat-square)](https://github.com/shahil-sk/certflow/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/shahil-sk/certflow?style=flat-square)](https://github.com/shahil-sk/certflow/commits/master)
 [![Made with Tkinter](https://img.shields.io/badge/GUI-Tkinter-informational?style=flat-square)](https://docs.python.org/3/library/tkinter.html)
 
 A desktop application that generates professional PDF certificates in bulk from a PNG template and an Excel data file.
@@ -18,7 +18,7 @@ A desktop application that generates professional PDF certificates in bulk from 
 
 ## What it does
 
-You bring a PNG certificate template and an `.xlsx` file with recipient data. CertWizard lets you drag each field (name, ID, date, etc.) onto the template, style the text, preview the result, and then generate a PDF for every row in the sheet — in one click.
+You bring a PNG certificate template and an `.xlsx` file with recipient data. certflow lets you drag each field (name, ID, date, etc.) onto the template, style the text, preview the result, and then generate a PDF for every row in the sheet — in one click.
 
 ---
 
@@ -49,7 +49,7 @@ You bring a PNG certificate template and an `.xlsx` file with recipient data. Ce
 ## Project structure
 
 ```
-certwizard/
+certflow/
 ├── main.py                  # entry point
 ├── requirements.txt
 ├── certgen.ico / certgen.png
@@ -85,8 +85,8 @@ certwizard/
 ### Install
 
 ```bash
-git clone https://github.com/shahil-sk/certwizard.git
-cd certwizard
+git clone https://github.com/shahil-sk/certflow.git
+cd certflow
 pip install -r requirements.txt
 ```
 
