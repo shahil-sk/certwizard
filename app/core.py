@@ -85,7 +85,7 @@ class CertificateApp:
 
     def _set_icon(self):
         for p in map(resource_path,
-                     ("certgen.ico", "certgen.png", "icon.ico", "icon.png")):
+                     ("icon.ico")):
             if not os.path.exists(p): continue
             try:
                 if platform.system() == "Windows" and p.endswith(".ico"):
