@@ -120,8 +120,8 @@ jobs:
       - name: Rename binaries to descriptive names
         run: |
           mv dist/certwizard-windows/certwizard.exe  dist/certwizard-windows.exe
-          mv dist/certwizard-linux/certwizard         dist/certwizard-linux-x86_64
-          mv dist/certwizard-macos/certwizard         dist/certwizard-macos-x86_64
+          mv dist/certwizard-linux/certwizard         dist/certwizard-linux
+          mv dist/certwizard-macos/certwizard         dist/certwizard-macos
 
       - name: Create release and upload binaries
         uses: softprops/action-gh-release@v2
