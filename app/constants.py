@@ -36,7 +36,7 @@ C = {
 }
 
 APP_TITLE        = "CertWizard"
-APP_VERSION      = "2.2"
+APP_VERSION      = "3.2.0"
 
 CANVAS_MAX_W     = 1100
 CANVAS_MAX_H     = 750
